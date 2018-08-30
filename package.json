@@ -1,0 +1,27 @@
+{
+  "name": "homebridge-http-slider",
+  "version": "0.0.1",
+  "description": "Homebridge plugin for stateful sliders working with http requests",
+  "main": "index.js",
+  "scripts": {
+    "test": "nyc mocha --exit"
+  },
+  "keywords": [
+    "homebridge-plugin"
+  ],
+  "author": "Marvin Dostal",
+  "license": "ISC",
+  "engines": {
+    "node": ">=0.12.0",
+    "homebridge": ">=0.2.0"
+  },
+  "devDependencies": {
+    "assert": "^1.4.1",
+    "mocha": "^5.2.0",
+    "nock": "^9.6.1",
+    "nyc": "^13.0.1"
+  },
+  "dependencies": {
+    "request": "^2.88.0"
+  }
+}
