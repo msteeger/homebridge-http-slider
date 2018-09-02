@@ -31,35 +31,47 @@ SliderAccessory.prototype = {
     getServices: function() {
         var services = [];
 
-        if (this.config.service === 'LightBulb') {
-            this.lightBulb = new Service.Lightbulb('LightBulb Slider');
-            this.lightBulb
+        this.section = 0;
+
+        startRequestInterval(this.config.request_interval || 1500);
+
+        if (this.config.service === 'Lightbulb') {
+            this.lightbulb = new Service.Lightbulb('LightBulb Slider');
+            this.lightbulb
                 .getCharacteristic(Characteristic.On)
                 .on('get', function(callback) {
                     callback(null, true);
                 })
                 .on('set', function(state, callback) {
                     callback(null);
-                    reset(this.lightBulb, Characteristic.On);
+                    reset(this.lightbulb, Characteristic.On);
                 }.bind(this));
-            this.lightBulb
+            this.lightbulb
                 .getCharacteristic(Characteristic.Brightness)
+                .on('get', function(callback) {
+                    callback(null, this.section);
+                }.bind(this))
                 .on('set', function(state, callback) {
                     var number_of_states = this.config.http_states.length;
-                    var interval_half = 100 / number_of_states;
-                    var interval = 2 * interval_half;
+                    var interval = 100 / (number_of_states - 1);
+                    var interval_half = interval / 2;
                     for (var i = 0; i < number_of_states; i++) {
                         var section = interval * i;
                         if (state - section < interval_half && 
                             state - section >= -interval_half) {
-                            request(this.config.http_states[i], function(){});
+                            setNextRequest(this.config.http_states[i]);
                             callback(null, section);
+
+                            this.log(section);
+
+                            this.section = section;
+                            reset(this.lightbulb, Characteristic.Brightness, 500);
                             return;
                         }
                     }
                 }.bind(this));
 
-            services.push(this.lightBulb);
+            services.push(this.lightbulb);
         }
 
         return services;
@@ -87,4 +99,25 @@ var reset = function(service, characteristic, delay){
                 .updateValue(newValue);
         });
     }, delay);
+};
+
+/*
+ * Request organizer
+ */
+var callrequest = false;
+var callhttp = '';
+
+var setNextRequest = function(url) {
+    callhttp = url;
+    callrequest = true;
+};
+
+var startRequestInterval = function(interval) {
+    setInterval(function() {
+        if (callrequest) {
+            callrequest = false;
+            if (callhttp !== '')
+                request(callhttp, function() {});
+        }
+    }, interval);
 };
