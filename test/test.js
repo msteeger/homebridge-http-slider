@@ -48,6 +48,7 @@ describe('Accessory configs', function() {
             http_states: ['http://127.0.0.1/0', 'http://127.0.0.1/1']
         };
         var slider = new AccessoryType(log, config);
+
         var light_service;
         it('should include the light bulb service', function() {
             slider.getServices().forEach(function(s) {

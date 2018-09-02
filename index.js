@@ -24,6 +24,7 @@ function SliderAccessory(log, config) {
     this.log = log;
     log('Starting http-slider');
     this.config = config;
+    this.name = config.name;
 }
 
 SliderAccessory.prototype = {
@@ -33,10 +34,19 @@ SliderAccessory.prototype = {
 
         this.section = 0;
 
+        var info = new Service.AccessoryInformation();
+        info.setCharacteristic(Characteristic.Name, this.name)
+            .setCharacteristic(Characteristic.Manufacturer, 'Programmed by Marvin Dostal')
+            .setCharacteristic(Characteristic.Model, '-')
+            .setCharacteristic(Characteristic.FirmwareRevision, '-')
+            .setCharacteristic(Characteristic.SerialNumber, '-');
+
+        services.push(info);
+
         startRequestInterval(this.config.request_interval || 1500);
 
         if (this.config.service === 'Lightbulb') {
-            this.lightbulb = new Service.Lightbulb('LightBulb Slider');
+            this.lightbulb = new Service.Lightbulb(this.name + ' Slider');
             this.lightbulb
                 .getCharacteristic(Characteristic.On)
                 .on('get', function(callback) {
