@@ -25,6 +25,21 @@ function SliderAccessory(log, config) {
     log('Starting http-slider');
     this.config = config;
     this.name = config.name;
+
+    if (typeof(this.config.thermo_range_low) !== 'number') {
+        this.config.thermo_range_low = 0;
+    }
+    if (typeof(this.config.thermo_range_high) !== 'number') {
+        this.config.thermo_range_high = 100;
+    }
+
+    if (this.config.service !== 'Thermostat') {
+        this.range_low = 0;
+        this.range_high = 100;
+    } else {
+        this.range_low = this.config.thermo_range_low;
+        this.range_high = this.config.thermo_range_high;
+    }
 }
 
 SliderAccessory.prototype = {
@@ -46,45 +61,80 @@ SliderAccessory.prototype = {
         startRequestInterval(this.config.request_interval || 1500);
 
         if (this.config.service === 'Lightbulb') {
-            this.lightbulb = new Service.Lightbulb(this.name + ' Slider');
-            this.lightbulb
+            this.sliderService = new Service.Lightbulb(this.name + ' Slider');
+            this.sliderCharacteristic = Characteristic.Brightness;
+
+            this.sliderService
                 .getCharacteristic(Characteristic.On)
-                .on('get', function(callback) {
-                    callback(null, true);
-                })
-                .on('set', function(state, callback) {
-                    callback(null);
-                    reset(this.lightbulb, Characteristic.On);
-                }.bind(this));
-            this.lightbulb
+                .on('get', this.getAlwaysOn)
+                .on('set', this.setAlwaysOn.bind(this));
+            this.sliderService
                 .getCharacteristic(Characteristic.Brightness)
-                .on('get', function(callback) {
-                    callback(null, this.section);
-                }.bind(this))
-                .on('set', function(state, callback) {
-                    var number_of_states = this.config.http_states.length;
-                    var interval = 100 / (number_of_states - 1);
-                    var interval_half = interval / 2;
-                    for (var i = 0; i < number_of_states; i++) {
-                        var section = interval * i;
-                        if (state - section < interval_half && 
-                            state - section >= -interval_half) {
-                            setNextRequest(this.config.http_states[i]);
-                            callback(null, section);
+                .on('get', this.getPercentage.bind(this))
+                .on('set', this.setPercentage.bind(this));
+        } else if (this.config.service === 'Fan') {
+            this.sliderService = new Service.Fan(this.name + ' Slider');
+            this.sliderCharacteristic = Characteristic.RotationSpeed;
 
-                            this.log(section);
+            this.sliderService
+                .getCharacteristic(Characteristic.On)
+                .on('get', this.getAlwaysOn)
+                .on('set', this.setAlwaysOn.bind(this));
+            this.sliderService
+                .getCharacteristic(Characteristic.RotationSpeed)
+                .on('get', this.getPercentage.bind(this))
+                .on('set', this.setPercentage.bind(this));
+        } else if (this.config.service === 'Thermostat') {
+            this.sliderService = new Service.Thermostat(this.name + ' Slider');
+            this.sliderCharacteristic = Characteristic.TargetTemperature;
 
-                            this.section = section;
-                            reset(this.lightbulb, Characteristic.Brightness, 500);
-                            return;
-                        }
-                    }
-                }.bind(this));
-
-            services.push(this.lightbulb);
+            this.sliderService
+                .getCharacteristic(Characteristic.TargetTemperature)
+                .setProps({
+                    maxValue: this.config.thermo_range_high, 
+                    minValue: this.config.thermo_range_low
+                })
+                .on('get', this.getPercentage.bind(this))
+                .on('set', this.setPercentage.bind(this));
         }
 
+        services.push(this.sliderService);
+
         return services;
+    },
+
+    getAlwaysOn: function(callback) {
+        callback(null, true);
+    },
+    
+    setAlwaysOn: function(state, callback) {
+        callback(null);
+        reset(this.sliderService, Characteristic.On);
+    },
+
+    getPercentage: function(callback) {
+        callback(null, this.section);
+    },
+
+    setPercentage: function(state, callback) {
+        var number_of_states = this.config.http_states.length;
+        var range = this.range_high - this.range_low;
+        var interval = range / (number_of_states - 1);
+        var interval_half = interval / 2;
+        for (var i = 0; i < number_of_states; i++) {
+            var section = (interval * i) + this.range_low;
+            if (state - section < interval_half && 
+                state - section >= -interval_half) {
+                setNextRequest(this.config.http_states[i]);
+                callback(null, section);
+
+                this.log(section);
+
+                this.section = section;
+                reset(this.sliderService, this.sliderCharacteristic, 500);
+                return;
+            }
+        }
     }
 };
 
@@ -112,7 +162,7 @@ var reset = function(service, characteristic, delay){
 };
 
 /*
- * Request organizer
+ * Prevents a fast succession of http get requests
  */
 var callrequest = false;
 var callhttp = '';
