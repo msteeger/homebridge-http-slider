@@ -2,6 +2,9 @@
 A homebridge plugin to provide a simple slider, that calls specific http-urls
 at specific states.
 
+(At the moment) There is no polling or requesting of an actual state from an 
+http-server possible!
+
 # Installation
 1. Install [Homebridge](https://github.com/nfarina/homebridge)
 2. Install this plugin `sudo npm install -g homebridge-http-slider`
