@@ -1,5 +1,5 @@
 # homebridge-http-slider
-A homebridge plugin to provide a simple slider, that calls specific http urls
+A homebridge plugin to provide a simple slider, that calls specific http-urls
 at specific states.
 
 # Installation
@@ -30,7 +30,7 @@ Mandatory
 ```
 * `name` can be freely chosen
 * Supported `service`s are `Lightbulb`, `Fan` and `Thermostat`
-* `http_states` http uls who get called when the slider gets set to a specific
+* `http_states` http-urls who get called when the slider gets set to a specific
   state. A low index in the array represents a low value/state in the slider.
 
 Optional
