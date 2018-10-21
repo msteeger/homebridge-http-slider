@@ -7,8 +7,8 @@
     "test": "nyc mocha --exit"
   },
   "repository": {
-      "type": "git",
-      "url": "git+https://github.com/datMaffin/homebridge-http-slider.git"
+    "type": "git",
+    "url": "git+https://github.com/datMaffin/homebridge-http-slider.git"
   },
   "keywords": [
     "homebridge-plugin"
@@ -16,7 +16,7 @@
   "author": "Marvin Dostal",
   "license": "ISC",
   "bugs": {
-      "url": "https://github.com/datMaffin/homebridge-http-slider/issues"
+    "url": "https://github.com/datMaffin/homebridge-http-slider/issues"
   },
   "homepage": "https://github.com/datMaffin/homebridge-http-slider#readme",
   "engines": {
@@ -27,7 +27,8 @@
     "assert": "^1.4.1",
     "mocha": "^5.2.0",
     "nock": "^9.6.1",
-    "nyc": "^13.0.1"
+    "nyc": "^13.0.1",
+    "rewire": "^4.0.1"
   },
   "dependencies": {
     "request": "^2.88.0"

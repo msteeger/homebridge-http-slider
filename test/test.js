@@ -2,6 +2,7 @@
 
 var assert = require('assert');
 var nock = require('nock');
+var rewire = require('rewire');
 
 /*
  * Mocks
@@ -28,6 +29,37 @@ var AccessoryType = Homebridge.AccessoryType;
  * Tests
  */
 
+describe('Test helper functions', function() {
+    var app = rewire('../index.js');
+    var percentageToSlider = app.__get__('percentageToSlider');
+    describe('percentageToSlider', function() {
+        it('should calculate the correct answer when only one state is given', function() {
+            assert.equal(percentageToSlider(1.0, 1), 0);
+            assert.equal(percentageToSlider(0.75, 1), 0);
+            assert.equal(percentageToSlider(0.5, 1), 0);
+            assert.equal(percentageToSlider(0.25, 1), 0);
+            assert.equal(percentageToSlider(0.0, 1), 0);
+        }),
+        it('should calculate the correct answer when 100%', function() {
+            assert.equal(percentageToSlider(1.0, 10), 9);
+            assert.equal(percentageToSlider(1.0, 100), 99);
+        });
+        it('should calculate the correct answer when 0%', function() {
+            assert.equal(percentageToSlider(0.0, 10), 0);
+            assert.equal(percentageToSlider(0.0, 100), 0);
+        });
+        it('should calculate the correct answer for 5 states', function() {
+            assert.equal(percentageToSlider(0.25, 5), 1);
+            assert.equal(percentageToSlider(0.5, 5), 2);
+            assert.equal(percentageToSlider(0.75, 5), 3);
+        });
+        it('should calculate the correct answer for 2 states', function() {
+            assert.equal(percentageToSlider(0.25, 2), 0);
+            assert.equal(percentageToSlider(0.75, 2), 1);
+        });
+    });
+});
+
 describe('Reqister Accessory', function() {
     it('should register the correct plugin name', function() {
         assert(Homebridge.pluginName, 'homebridge-http-slider');
@@ -40,12 +72,23 @@ describe('Reqister Accessory', function() {
     });
 });
 
-describe('Accessory configs', function() {
-    describe('light 1', function() {
+describe('Accessory reading configs', function() {
+    describe('light 1 json', function() {
         var config = {
             accessory:   'Slider',
             service:     'Lightbulb',
-            http_states: ['http://127.0.0.1/0', 'http://127.0.0.1/1']
+            http_states: ['http://127.0.0.1/0', 'http://127.0.0.1/1'],
+            request_interval: 100,
+
+            polling: {
+                // reading config starts here
+                http_json: 'http://127.0.0.1/state',
+                json_path: ['main', 'light_state'],
+                low: 0,     // lowest number possible in source
+                high: 10,    // highest number possible in source
+                polling_interval: 10, // in seconds
+                // number of states is taken from http_states
+            }
         };
         var slider = new AccessoryType(log, config);
 
@@ -67,7 +110,55 @@ describe('Accessory configs', function() {
                     done();
                 else
                     done('nock was not done!');
-            }, 1600);
+            }, 200);
+        });
+        /*it('should get the correct value 1', function(done) {
+            nock('http://127.0.0.1').get('/state').reply(200, '{"main": {"light_state": 10}}');
+            light_service
+                .getCharacteristic(Characteristic.Brightness)
+                .emit('get', function(_error, value){
+                    // value represents location of slider for light bulb: [0, 100]
+                    var expected = 100;
+                    if (_error === null && value === expected) 
+                        done();
+                    else
+                        done('got wrong value. Expected:' + expected + ' Got:' + value);
+
+                    nock.cleanAll();
+                });
+        });*/
+    });
+});
+
+describe('Accessory sending configs', function() {
+    describe('light 1', function() {
+        var config = {
+            accessory:   'Slider',
+            service:     'Lightbulb',
+            http_states: ['http://127.0.0.1/0', 'http://127.0.0.1/1'],
+            request_interval: 100,
+        };
+        var slider = new AccessoryType(log, config);
+
+        var light_service;
+        it('should include the light bulb service', function() {
+            slider.getServices().forEach(function(s) {
+                if (s instanceof Service.Lightbulb)
+                    light_service = s;
+            });
+            assert.ok(light_service);
+        });
+        it('should make the correct request 1', function(done) {
+            nock('http://127.0.0.1').get('/0').reply(200, '');
+            light_service
+                .getCharacteristic(Characteristic.Brightness)
+                .emit('set', 40, function(){});
+            setTimeout(function() {
+                if (nock.isDone())
+                    done();
+                else
+                    done('nock was not done!');
+            }, 200);
         });
         it('should make the correct request 2', function(done) {
             nock('http://127.0.0.1').get('/1').reply(200, '');
@@ -79,7 +170,7 @@ describe('Accessory configs', function() {
                     done();
                 else
                     done('nock was not done!');
-            }, 1600);
+            }, 200);
         });
         it('should return the correct value 1', function(done) {
             light_service
@@ -102,7 +193,7 @@ describe('Accessory configs', function() {
                 });
         });
     });
-    describe('light 2 bigger', function() {
+    describe('light 2 bigger and default request timing of about 1500ms', function() {
         var config = {
             accessory:   'Slider',
             service:     'Lightbulb',
@@ -231,7 +322,8 @@ describe('Accessory configs', function() {
         var config = {
             accessory:   'Slider',
             service:     'Fan',
-            http_states: ['http://127.0.0.1/0', 'http://127.0.0.1/1']
+            http_states: ['http://127.0.0.1/0', 'http://127.0.0.1/1'],
+            request_interval: 100,
         };
         var slider = new AccessoryType(log, config);
 
@@ -253,7 +345,7 @@ describe('Accessory configs', function() {
                     done();
                 else
                     done('nock was not done!');
-            }, 1600);
+            }, 200);
         });
         it('should make the correct request 2', function(done) {
             nock('http://127.0.0.1').get('/1').reply(200, '');
@@ -265,7 +357,7 @@ describe('Accessory configs', function() {
                     done();
                 else
                     done('nock was not done!');
-            }, 1600);
+            }, 200);
         });
         it('should return the correct value 1', function(done) {
             fan_service
@@ -292,7 +384,8 @@ describe('Accessory configs', function() {
         var config = {
             accessory:   'Slider',
             service:     'Thermostat',
-            http_states: ['http://127.0.0.1/0', 'http://127.0.0.1/1']
+            http_states: ['http://127.0.0.1/0', 'http://127.0.0.1/1'],
+            request_interval: 100,
         };
         var slider = new AccessoryType(log, config);
 
@@ -314,7 +407,7 @@ describe('Accessory configs', function() {
                     done();
                 else
                     done('nock was not done!');
-            }, 1600);
+            }, 200);
         });
         it('should make the correct request 2', function(done) {
             nock('http://127.0.0.1').get('/1').reply(200, '');
@@ -326,7 +419,7 @@ describe('Accessory configs', function() {
                     done();
                 else
                     done('nock was not done!');
-            }, 1600);
+            }, 200);
         });
         it('should return the correct value 1', function(done) {
             thermo_service
@@ -361,7 +454,8 @@ describe('Accessory configs', function() {
                 'http://127.0.0.1/4'
             ],
             thermo_range_high: 4,
-            thermo_range_low: 0
+            thermo_range_low: 0,
+            request_interval: 100,
         };
         var slider = new AccessoryType(log, config);
 
@@ -383,7 +477,7 @@ describe('Accessory configs', function() {
                     done();
                 else
                     done('nock was not done!');
-            }, 1600);
+            }, 200);
         });
         it('should make the correct request 2', function(done) {
             nock('http://127.0.0.1').get('/1').reply(200, '');
@@ -395,7 +489,7 @@ describe('Accessory configs', function() {
                     done();
                 else
                     done('nock was not done!');
-            }, 1600);
+            }, 200);
         });
         it('should make the correct request 3', function(done) {
             nock('http://127.0.0.1').get('/2').reply(200, '');
@@ -407,7 +501,7 @@ describe('Accessory configs', function() {
                     done();
                 else
                     done('nock was not done!');
-            }, 1600);
+            }, 200);
         });
         it('should make the correct request 4', function(done) {
             nock('http://127.0.0.1').get('/3').reply(200, '');
@@ -419,7 +513,7 @@ describe('Accessory configs', function() {
                     done();
                 else
                     done('nock was not done!');
-            }, 1600);
+            }, 200);
         });
         it('should make the correct request 5', function(done) {
             nock('http://127.0.0.1').get('/4').reply(200, '');
@@ -431,7 +525,7 @@ describe('Accessory configs', function() {
                     done();
                 else
                     done('nock was not done!');
-            }, 1600);
+            }, 200);
         });
         it('should return the correct value 1', function(done) {
             thermo_service

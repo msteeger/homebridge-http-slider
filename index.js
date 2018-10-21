@@ -117,25 +117,48 @@ SliderAccessory.prototype = {
     },
 
     setPercentage: function(state, callback) {
-        var number_of_states = this.config.http_states.length;
+        var numberOfStates = this.config.http_states.length;
         var range = this.range_high - this.range_low;
-        var interval = range / (number_of_states - 1);
-        var interval_half = interval / 2;
-        for (var i = 0; i < number_of_states; i++) {
-            var section = (interval * i) + this.range_low;
-            if (state - section < interval_half && 
-                state - section >= -interval_half) {
-                setNextRequest(this.config.http_states[i]);
-                callback(null, section);
+        var percentage = state / range;
 
-                this.log(section);
+        var newState = percentageToSlider(percentage , numberOfStates);
 
-                this.section = section;
-                reset(this.sliderService, this.sliderCharacteristic, 500);
-                return;
-            }
-        }
+        setNextRequest(this.config.http_states[newState]);
+
+        var interval = range / (numberOfStates - 1);
+        var section = (interval * newState) + this.range_low;
+        callback(null, section);
+
+        this.section = section;
+        reset(this.sliderService, this.sliderCharacteristic, 500);
     }
+};
+
+/**
+ * Calculates the slider position in a slider with a specific number of states.
+ * @param {float} percentage 
+ * @param {int} numberOfStates
+ * @return {int} zero indexed state
+ */
+var percentageToSlider = function(percentage, numberOfStates) {
+    if (percentage <= 0.0)
+        return 0;
+    else if (percentage >= 1.0)
+        return numberOfStates - 1;
+
+    if (numberOfStates === 1)
+        return numberOfStates - 1;
+
+    var interval = 1 / (numberOfStates - 1);
+    var interval_half = interval / 2;
+
+    // avg. running time of n/2. propably O(n logn) possible
+    for (var i=0; i < numberOfStates; i++) 
+        if (((i*interval)+interval_half) > percentage)
+            return i;
+
+    // it should never get here, but for correctness; why not?
+    return numberOfStates - 1; 
 };
 
 /**
