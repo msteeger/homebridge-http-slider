@@ -206,7 +206,7 @@ var startRequestInterval = function(interval) {
                     },
                     json: callhttp.body
                 };
-                request.post(callhttp.url, options, function());
+                request.post(callhttp.url, options, function() {});
         }
     }, interval);
 };
